@@ -10,7 +10,7 @@ http://joneisen.me/talk-k8s-app-config
 
 ----
 
-## Core Problems in Cluster Management
+## 3 Core Problems in Cluster Management
 
 - Service Discovery
 - Application Monitoring
@@ -18,48 +18,85 @@ http://joneisen.me/talk-k8s-app-config
 
 ----
 
-## Application Configuration Defined
+## 3 Core Problems in Cluster Management
 
-1. Get configs into app
-2. Limit app-specific code
-3. Reload app on config change
-4. Easy to use system
+- <span style="text-decoration:line-through">Service Discovery</span>
+- <span style="text-decoration:line-through">Application Monitoring</span>
+- **Application Configuration**
+
+We'll talk about App Config today.
 
 ----
 
-## The Solutions
+## Application Configuration Defined
+
+**Required**: Get configs into app
+
+**Optional**:
+
+- Limit app-specific code
+- Reload app on config change
+- Easy to use system
+
+----
+
+## Some Solutions
 
 - Bundle configs into image
 - Etcd
 - Kubernetes Secrets
-- Kubernetes ConfigMap
+- Kubernetes (v1.2) ConfigMap
 
 ----
 
 ### Bundle Configs into Image
 
-Pro: Images can be shipped and run easily
+```
+COPY config.yml /app/config.yml
+```
+```
+ENV MY_VAR=yoyoma
+```
+
+____
+
+
+### Bundle Configs into Image
+
+- Images can be shipped and run easily.
+- Versions config with image
 
 ---
 
-Cons:
 - K8s doesn't support different image per pod in RC
-- Requires build server at low scale
-- Requires many images per app
-- Hard to have reload-on-change
+- Requires build server even at low scale
+- Requires many images per app (storage cost)
+- Manual reload-on-change
 
 ----
 
-### Etcd
+### Consistent Database
 
-Pros:
+Like etcd or Zookeeper
+
+```
+/configs/DB_HOST
+/configs/DB_PORT
+/configs/app/SPECIAL_APP_VAR
+```
+
+____
+
+### Consistent Database
+
 - Store whatever you want in `etcd`
 - Reload-on-change easy to implement
 
-Cons:
+---
+
 - Requires app-specific code or special container in pod
 - Works outside of k8s
-- Must use raw `etcdctl` to edit
+- Must use raw `etcdctl` or ZKUI to edit
 
 ____
 
@@ -78,25 +115,9 @@ check_cmd = "/usr/sbin/nginx -t -c {{.src}}"
 reload_cmd = "/usr/sbin/service nginx restart"
 ```
 
-How to get `confd` config into the container?
-
 ----
 
-### Secrets
-
-Pros:
-- **Built-in** to Kubernetes v1.0.
-- Automagically mount into your containers
-- Stores arbitrary data
-
-Cons:
-- No reload-on-change
-- Requires base64 encoding to use (until v1.2)
-- Doesn't support environment variables natively
-
-____
-
-#### Using Secrets
+### Using Secrets
 
 To create:
 ```yaml
@@ -117,10 +138,10 @@ volumes:
   - secret:
     secretName: mysecret
 ```
-
 ____
 
-#### Using Secrets
+
+### Using Secrets
 
 - Use them as files ready for use in a program (e.g. ssh keys)
 - Use them as environment configurations
@@ -130,13 +151,55 @@ KEY1=VALUE1
 KEY2=VALUE2
 ```
 
-*Protip*: You can read in environment files using a Docker `ENTRYPOINT`
+*Protip*: You can read in environment variables using a Docker `ENTRYPOINT`
+
+____
+
+### Using Secrets
+
+- **Built-in** to Kubernetes v1.0.
+- Automagically mount into your containers
+- Stores arbitrary data
+
+---
+
+- No reload-on-change
+- Requires base64 encoding to use (until v1.2)
+- Doesn't support environment variables natively
 
 ----
 
 ### ConfigMap
 
-A [proposed feature](https://github.com/eBay/Kubernetes/blob/master/docs/proposals/configmap.md) for Kubernetes v1.2
+```
+kubectl create configmap my-config \
+  --from-literal me.how=very \
+  --from-literal me.type=charm
+```
+
+Or just use the regular `create -f my-config.yaml`
+
+---
+
+```
+env:
+  - name: MY_CONFIG_HOW
+    valueFrom:
+      configMapKeyRef:
+        name: my-config
+        key: me.how
+  - name: MY_CONFIG_TYPE
+    valueFrom:
+      configMapKeyRef:
+        name: my-config
+        key: me.type
+```
+____
+
+
+### ConfigMap
+
+A [feature](http://kubernetes.io/docs/user-guide/configmap/) in Kubernetes v1.2
 
 Like Secrets, but:
 
@@ -149,15 +212,20 @@ Like Secrets, but:
 ## Conclusion
 
 - Bundling configs into your images is too much work!
-- Using etcd is powerful but a lot of work
+- Using etcd or ZK is powerful but a lot of work
 - Secrets are great, but have problems
-- Get **stoked for ConfigMap**!
+- Upgrade to v1.2 to get `ConfigMap`!
 
 ----
 
 # Thanks!
 
-Jon Eisen
-@jm_eisen
-http://joneisen.works
+Jon Eisen, @jm_eisen
+
+Activision Analytic Services
+
 Blog: http://joneisen.me
+
+
+<img src="img/tyson-yoga.jpg" style="float:left" height="250px">
+<img src="img/tyson-love.jpg" style="float:right" height="250px">
